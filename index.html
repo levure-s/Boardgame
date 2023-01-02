@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="jp">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>boardgame</title>
+    <link rel="stylesheet" href="./css/doctor.css" />
+    <link rel="stylesheet" href="./css/style.css" />
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.1.4/jquery.min.js"></script>
+  </head>
+  <body>
+    <main>
+      <section>
+        <table class="map">
+          <tbody></tbody>
+        </table>
+      </section>
+    </main>
+  </body>
+  <script>
+    class Map {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.stops = {};
+      }
+
+      setObject(key, object) {
+        this.stops[key] = object;
+      }
+
+      getStops() {
+        return this.stops;
+      }
+
+      getStopByKey(key) {
+        return this.stops[key];
+      }
+
+      getY() {
+        return this.y;
+      }
+
+      getX() {
+        return this.x;
+      }
+    }
+    class Stop {
+      constructor(name, category) {
+        this.name = name;
+        this.category = category;
+      }
+    }
+    class Player {
+      constructor(x, y, name) {
+        this.x = x;
+        this.y = y;
+        this.name = name;
+      }
+
+      getPositionX() {
+        return this.x;
+      }
+
+      getPositionY() {
+        return this.y;
+      }
+
+      getPositionByString() {
+        return "cell_" + this.x.toString() + "_" + this.y.toString();
+      }
+
+      getName() {
+        return this.name;
+      }
+
+      goForward() {
+        this.y -= 1;
+      }
+
+      goLeft() {
+        this.x -= 1;
+      }
+
+      goRight() {
+        this.x += 1;
+      }
+
+      goBehind() {
+        this.y += 1;
+      }
+
+      createMemento() {
+        this.memento = new Memento(this.x, this.y);
+      }
+
+      restoreMemento() {
+        this.x = this.memento.getX();
+        this.y = this.memento.getY();
+      }
+    }
+    class Memento {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+      }
+
+      getX() {
+        return this.x;
+      }
+
+      getY() {
+        return this.y;
+      }
+    }
+    class CPU {
+      constructor(map, player) {
+        this.map = map;
+        this.player = player;
+      }
+      setProgram(programs) {
+        this.programs = programs;
+      }
+      async runProgram(command) {
+        await this.player.createMemento();
+        switch (command) {
+          case "000":
+            if (0 < this.player.getPositionY()) {
+              this.player.goForward();
+            }
+            break;
+          case "001":
+            if (this.map.getX() > this.player.getPositionX() + 1) {
+              this.player.goRight();
+            }
+            break;
+          case "010":
+            if (0 < this.player.getPositionX()) {
+              this.player.goLeft();
+            }
+            break;
+          case "011":
+            if (this.map.getY() > this.player.getPositionY() + 1) {
+              this.player.goBehind();
+            }
+            break;
+          case "100":
+            break;
+        }
+        const stop = this.map.getStopByKey(this.player.getPositionByString());
+        console.log(stop);
+        if (stop && stop.category == "block") {
+          this.player.restoreMemento();
+        }
+      }
+    }
+    class Program {
+      constructor(command1, command2, command3) {
+        this.commands = [command1, command2, command3];
+      }
+
+      getCommands() {
+        return this.commands;
+      }
+    }
+    class Command {
+      constructor(name, code) {
+        this.name = name;
+        this.code = code;
+      }
+    }
+
+    $(document).ready(function () {
+      let map = new Map(7, 7);
+      for (let y = 0; y < map.x; y++) {
+        $(".map tbody").append("<tr></tr>");
+        for (let x = 0; x < map.x; x++) {
+          const cell = "cell_" + x.toString() + "_" + y.toString();
+          $(".map tr:last-of-type").append(
+            '<td class="cell ' + cell + '"></td>'
+          );
+        }
+      }
+      map.setObject("cell_2_6", new Stop("rock", "block"));
+      map.setObject("cell_0_3", new Stop("rock", "block"));
+      map.setObject("cell_1_2", new Stop("rock", "block"));
+      map.setObject("cell_2_2", new Stop("rock", "block"));
+      map.setObject("cell_3_0", new Stop("rock", "block"));
+      map.setObject("cell_4_1", new Stop("rock", "block"));
+      map.setObject("cell_4_3", new Stop("rock", "block"));
+      map.setObject("cell_5_4", new Stop("rock", "block"));
+      map.setObject("cell_6_2", new Stop("rock", "block"));
+      map.setObject("cell_6_0", new Stop("jewel", "item"));
+      const stops = map.getStops();
+      for (const key in stops) {
+        $("." + key).addClass(stops[key].name);
+      }
+      const player1 = new Player(0, 6, "player1");
+      $("." + player1.getPositionByString()).append(
+        '<div class="character ' + player1.getName() + '"></div>'
+      );
+      const cpu1 = new CPU(map, player1);
+      const program1 = new Program("010", "001", "010");
+      let n = 0;
+      let intervalId = setInterval(function () {
+        cpu1.runProgram(program1.getCommands()[n]).then(function () {
+          console.log(player1.getPositionByString());
+          $("." + player1.getName()).appendTo(
+            "." + player1.getPositionByString()
+          );
+          n++;
+          if (n > 2) {
+            clearInterval(intervalId);
+            n = 0;
+          }
+        });
+      }, 1000);
+    });
+  </script>
+</html>
